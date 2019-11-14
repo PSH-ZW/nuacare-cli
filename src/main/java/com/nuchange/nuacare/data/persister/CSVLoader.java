@@ -1,10 +1,14 @@
 package com.nuchange.nuacare.data.persister;
 
 import au.com.bytecode.opencsv.CSVReader;
+import com.nuchange.nuacare.util.Utils;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 
@@ -18,6 +22,7 @@ public class CSVLoader {
 
 
 	private static final char seprator = ',';
+	private static final String ERROR_FILE_DIRECTORY = "/tmp/uploadErrors/";
 
 	public CSVLoader(String filePath, LineProcessor processor) {
 		this.filePath = filePath;
@@ -28,12 +33,12 @@ public class CSVLoader {
 		System.out.println("Begining validation of the file");
 		CSVReader csvReader = null;
 		int errorCount = 0;
-		Date now = new Date();
-		String fileName = processor.getClass().getName()+"_Validation_outpu_"+now.toString() + ".txt";
+		Utils.createDirectoryIfNotExist(ERROR_FILE_DIRECTORY);
+		String errorFileName = getErrorFileName("_Validation_output_", ".txt");
 		BufferedWriter writer = null;
 		try {
 			csvReader = new CSVReader(new FileReader(filePath), seprator);
-			File failedItems = new File(fileName);
+			File failedItems = new File(errorFileName);
 			writer = new BufferedWriter(new FileWriter(failedItems, true));
 			String[] nextLine;
 			//reading header row
@@ -47,7 +52,7 @@ public class CSVLoader {
 			}
 			if (errorCount > 0){
 				throw new Exception("Error in header line, could not proceed with the validation of file," +
-						" Please refer to "+fileName+" for further details");
+						" Please refer to "+errorFileName+" for further details");
 			}
 			while ((nextLine = csvReader.readNext()) != null) {
 				this.processor.preProcess();
@@ -66,22 +71,26 @@ public class CSVLoader {
 					+ e.getMessage());
 		}
 		finally {
-			writer.close();
-			csvReader.close();
+			if (writer != null) {
+				writer.close();
+			}
+			if (csvReader != null) {
+				csvReader.close();
+			}
 		}
 		System.out.println("Validation of the file complete ( at:" +new Date()+ ")");
 		if (errorCount >0){
 			throw new Exception("Error in header line, could not proceed with the validation of file," +
-					" Please refer to "+fileName+" for further details");
+					" Please refer to "+errorFileName+" for further details");
 		}
 
 	}
 
 	private int updateErrorDetails(int errorCount, BufferedWriter writer, String[] firstLine, String status) throws IOException {
+		writer.write(status+"\n" + "CSV line : ");
 		for (String s : firstLine) {
-            writer.write(s + ", ");
-        }
-		writer.write(status+"\n");
+			writer.write(s + ", ");
+		}
 		errorCount ++;
 		return errorCount;
 	}
@@ -90,42 +99,69 @@ public class CSVLoader {
 
 		CSVReader csvReader = null;
 		BufferedWriter writer = null;
+		StringBuilder header = new StringBuilder();
+		boolean errorsInCsv = false;
+
 		try {
 			csvReader = new CSVReader(new FileReader(filePath), seprator);
-			Date now = new Date();
-			String fileName = now.toString() + ".txt";
-			File failedItems = new File(fileName);
+
+			Utils.createDirectoryIfNotExist(ERROR_FILE_DIRECTORY);
+			String errorFileName = getErrorFileName( "_Errors_", ".csv");
+			File failedItems = new File(errorFileName);
 			writer = new BufferedWriter(new FileWriter(failedItems, true));
+
 			String[] nextLine;
 			//reading header row
 			String[] firstLine = csvReader.readNext();
 			if(firstLine!=null){
 				this.processor.init(firstLine);
+				for (String s : firstLine) {
+					header.append(s).append(", ");
+				}
+				header.append("errors\n");
 			}
+			// reading data
 			while ((nextLine = csvReader.readNext()) != null) {
 				this.processor.preProcess();
+
 				String lineProcessStatus = this.processor.processLine(nextLine);
+
 				if(StringUtils.isNotBlank(lineProcessStatus)) {
-					System.out.println("ERROR Could not insert data, processing line");
+					if (!errorsInCsv) {
+						writer.write(header.toString());
+						errorsInCsv = true;
+					}
 					for (String s : nextLine) {
 						writer.write(s + ", ");
 					}
 					writer.write(lineProcessStatus+"\n");
-					//break;
 				}
 				this.processor.postProcess();
-
 			}
 			this.processor.finish();
+
+			if (errorsInCsv) {
+				System.out.println("Errors occurred while executing file! Please refer to " + errorFileName + " for further details");
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			throw new Exception("Error occured while executing file. "
+			throw new Exception("Error occurred while executing file. "
 					+ e.getMessage());
 		}
 		finally {
-			writer.close();
-			csvReader.close();
+			if (writer != null) {
+				writer.close();
+			}
+			if (csvReader != null) {
+				csvReader.close();
+			}
 		}
+	}
+
+	private String getErrorFileName(String nameType, String extention) {
+		Date now = new Date();
+		SimpleDateFormat sf = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss");
+		return ERROR_FILE_DIRECTORY + processor.getClass().getSimpleName() + nameType + sf.format(now) + extention;
 	}
 
 	public boolean needsValidation() {

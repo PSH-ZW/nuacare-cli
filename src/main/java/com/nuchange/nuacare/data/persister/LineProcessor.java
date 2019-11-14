@@ -1,9 +1,13 @@
 package com.nuchange.nuacare.data.persister;
 
+import org.apache.commons.lang.StringUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.security.SecureRandom;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * Created by sandeepe on 28/09/16.
@@ -76,4 +80,27 @@ public abstract class LineProcessor {
     public boolean needsValidation(){
         return true;
     }
+
+    protected String validateHeader(String[] csvLine, String[] header) {
+        if (csvLine.length != header.length) {
+            return "CSV Header validation failed : column count does not match required format!";
+        }
+        for (int i = 0; i < csvLine.length; i++) {
+            if (!csvLine[i].equals(header[i])) {
+                return "CSV Header validation failed : name of column does not match! Required : " + header[i] + ", Found : " + csvLine[i];
+            }
+        }
+        return null;
+    }
+
+    public java.sql.Timestamp getSqlDateValue(String input, String pattern) throws ParseException {
+        if (StringUtils.isEmpty(input)) {
+            return null;
+        } else {
+            SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+            Date date = sdf.parse(input);
+            return new java.sql.Timestamp(date.getTime());
+        }
+    }
+
 }
