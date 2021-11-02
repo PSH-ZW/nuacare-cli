@@ -4,6 +4,7 @@ import com.nuchange.nuacare.data.persister.CSVDataPersister;
 import com.nuchange.nuacare.data.persister.LineProcessor;
 import com.nuchange.nuacare.data.persister.impl.ConditionsProcessor;
 import com.nuchange.nuacare.data.persister.impl.EditPersonAttribute;
+import com.nuchange.nuacare.data.persister.impl.FormsProcessor;
 import com.nuchange.nuacare.data.persister.impl.LabResultsProcessor;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,9 @@ public class UploadCommands implements CommandMarker {
 	private ConditionsProcessor conditionsProcessor;
 
 	@Autowired
+	private FormsProcessor formsProcessor;
+
+	@Autowired
 	private CSVDataPersister csvDataPersister;
 
 	@CliAvailabilityIndicator({"upload csv"})
@@ -44,7 +48,8 @@ public class UploadCommands implements CommandMarker {
 	public String upload(
 			@CliOption(key = {"type"}, mandatory = true, help = "Type of data which need to be uploaded") final UploadType type,
 			@CliOption(key = {"file"}, mandatory = true, help = "Full path of the csv file") final String filePath,
-			@CliOption(key = {"validate"}, mandatory = false, help = "Pass false to real update, otherwise file will be just validated") String validate
+			@CliOption(key = {"validate"}, mandatory = false, help = "Pass false to real update, otherwise file will be just validated") String validate,
+			@CliOption(key = {"json"}, mandatory = false, help = "Path of the json form") String path
 	) throws Exception {
 		File fileToProcess = new File(filePath);
 		boolean exists = fileToProcess.exists();
@@ -62,6 +67,9 @@ public class UploadCommands implements CommandMarker {
 				return "No Processor registered for type, " + type;
 			}
 			csvDataPersister.setProcessor(processorForType);
+			if(type==UploadType.Forms){
+				formsProcessor.generateMap(path);
+			}
 			csvDataPersister.updateCSV(filePath, validate);
 			return "Processed file.." + filePath;
 		}
@@ -75,6 +83,8 @@ public class UploadCommands implements CommandMarker {
 				return labResultsProcessor;
 			case Conditions:
 				return conditionsProcessor;
+			case Forms: ;
+				return formsProcessor;
 		}
 		return null;
 	}
@@ -82,7 +92,8 @@ public class UploadCommands implements CommandMarker {
 	enum UploadType {
 		EditPersonAttributes("EditPersonAttributes"),
 		LabResults("LabResults"),
-		Conditions("Conditions");
+		Conditions("Conditions"),
+		Forms("Forms");
 
 		private String type;
 
