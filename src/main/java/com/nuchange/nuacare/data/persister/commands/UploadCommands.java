@@ -2,6 +2,7 @@ package com.nuchange.nuacare.data.persister.commands;
 
 import com.nuchange.nuacare.data.persister.CSVDataPersister;
 import com.nuchange.nuacare.data.persister.LineProcessor;
+import com.nuchange.nuacare.data.persister.ObsProcessor;
 import com.nuchange.nuacare.data.persister.impl.ConditionsProcessor;
 import com.nuchange.nuacare.data.persister.impl.EditPersonAttribute;
 import com.nuchange.nuacare.data.persister.impl.FormsProcessor;
@@ -38,6 +39,9 @@ public class UploadCommands implements CommandMarker {
 	@Autowired
 	private CSVDataPersister csvDataPersister;
 
+	@Autowired
+	private ObsProcessor obsProcessor;
+
 	@CliAvailabilityIndicator({"upload csv"})
 	public boolean isSimpleAvailable() {
 		//always available
@@ -73,6 +77,15 @@ public class UploadCommands implements CommandMarker {
 			csvDataPersister.updateCSV(filePath, validate);
 			return "Processed file.." + filePath;
 		}
+	}
+
+	@CliCommand(value = "convert form", help = "Convert form to 2.0")
+	public String convert(
+			@CliOption(key = {"conceptId"}, mandatory = false, help = "Concept id of the form") final Integer conceptId,
+			@CliOption(key = {"json"}, mandatory = false, help = "Path of the json form") String path
+	){
+		obsProcessor.migrateForm(conceptId, path);
+		return "Processed file.." + path;
 	}
 
 	private LineProcessor getProcessorForType(UploadType type) {
