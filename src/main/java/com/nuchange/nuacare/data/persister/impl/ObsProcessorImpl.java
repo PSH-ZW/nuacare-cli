@@ -26,6 +26,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 
     private Map<String, String> formIdMap = new HashMap<>();
     private Map<Integer, String> conceptUuidMap = new HashMap<>();
+    private Map<Integer, List<Integer>> conceptObsMap = new HashMap<>();
     private String locationName = "Bahmni^";
     private String versionString = ".1/";
     List<String> batchSqls = new ArrayList<>();
@@ -138,13 +139,14 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             obsId.add(map.get("obs_id").toString());
         }
         updateMembers(obsId, batchSqls);
+        updateSql(conceptObsMap, batchSqls);
         File file = new File("./update.sql");
         try {
             FileUtils.writeLines(file, batchSqls, false);
         } catch (IOException e) {
             e.printStackTrace();
         }
-//        getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
+        getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
 
     }
 
@@ -173,16 +175,52 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             }
             else{
                 Integer conceptId = (Integer) obs.get("concept_id");
+                Integer obs_id = (Integer) obs.get("obs_id");
+
+                if(!conceptObsMap.containsKey(conceptId)){
+                    conceptObsMap.put(conceptId, new ArrayList<Integer>());
+                }
+                List<Integer> obsList = conceptObsMap.get(conceptId);
+                obsList.add(obs_id);
+
                 String fnsp = getFormNameSpaceAndPath(conceptId);
-                if(!StringUtils.isEmpty(fnsp)){
+
+                /*if(!StringUtils.isEmpty(fnsp)){
                     sql = "update obs set form_namespace_and_path = \"" + fnsp + "\" where obs_id = " + (Integer)(obs.get("obs_id")) + ";";
                     System.out.println(sql + " " + batchSqls.size());
                     batchSqls.add(sql);
-                }
+                }*/
             }
         }
         if(!CollectionUtils.isEmpty(memberId)){
             updateMembers(memberId, batchSqls);
+        }
+    }
+
+    private void updateSql(Map<Integer, List<Integer>> obsId, List<String> batchSqls){
+
+        for(Integer key : obsId.keySet()){
+            List<Integer> obsGrp = obsId.get(key);
+            String fnsp = getFormNameSpaceAndPath(key);
+
+            String sep = ",";
+            StringBuilder sb = new StringBuilder();
+
+            for (int i = 0; i < obsGrp.size(); i++) {
+
+                sb.append(obsGrp.get(i));
+
+                // if not the last item
+                if (i != obsGrp.size() - 1) {
+                    sb.append(sep);
+                }
+            }
+
+            if(!StringUtils.isEmpty(fnsp)){
+                String sql = "update obs set form_namespace_and_path = \"" + fnsp + "\" where obs_id in ( " + sb.toString() + ");";
+                System.out.println(sql + " " + batchSqls.size());
+                batchSqls.add(sql);
+            }
         }
     }
 }
