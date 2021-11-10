@@ -170,7 +170,8 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
         List<String> memberId  = new ArrayList<>();
         for(Map<String, Object> obs : members){
             if(obs.get("value_group_id") == null && obs.get("value_coded") == null && obs.get("value_coded_name_id") == null &&
-                    obs.get("value_drug") == null && obs.get("value_datetime") == null && obs.get("value_modifier") ==null && obs.get("value_text") == null && obs.get("value_complex") == null ){
+                    obs.get("value_drug") == null && obs.get("value_datetime") == null && obs.get("value_modifier") ==null &&
+                    obs.get("value_text") == null && obs.get("value_complex") == null  && obs.get("value_numeric") ==null){
                 memberId.add((obs.get("obs_id").toString()));
             }
             else{
