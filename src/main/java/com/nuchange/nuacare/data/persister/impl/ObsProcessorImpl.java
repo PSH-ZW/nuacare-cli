@@ -93,7 +93,8 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
     }
 
     private void parseObj(FormControl control, String formName) {
-
+        String formNameSpaceAndPath = locationName + formName + versionString +control.getId()+"-0";
+        formIdMap.put(control.getConcept().getUuid(), formNameSpaceAndPath);
         if(!CollectionUtils.isEmpty(control.getControls())){
             for(FormControl innerControl : control.getControls()){
                 if(innerControl.getControls()!=null){
@@ -103,7 +104,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
                     FormConcept concept = innerControl.getConcept();
                     if(concept!=null){
                         //Bahmni^testform3.2/2-0
-                        String formNameSpaceAndPath = locationName + formName + versionString +innerControl.getId()+"-0";
+                        formNameSpaceAndPath = locationName + formName + versionString +innerControl.getId()+"-0";
                         formIdMap.put(concept.getUuid(), formNameSpaceAndPath);
                         if(concept.getUuid().equals("9d472fc0-ef3b-45b3-a44b-b1d16d60d44f")){
                             System.out.println("next");
@@ -116,7 +117,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             FormConcept concept = control.getConcept();
             if(concept!=null){
                 //Bahmni^testform3.2/2-0
-                String formNameSpaceAndPath = locationName + formName + versionString +control.getId()+"-0";
+                formNameSpaceAndPath = locationName + formName + versionString +control.getId()+"-0";
                 formIdMap.put(concept.getUuid(), formNameSpaceAndPath);
             }
         }
@@ -124,14 +125,10 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 
     @Override
     public void migrateForm(Integer conceptId, String path){
-//        conceptId = 7872;
-////        path = "/home/nuchanger/form.json";
-//        path = "/home/nuchanger/Downloads/fps.json";
-//        convert form --conceptId 7872 --json /home/nuchanger/form.json
-//        convert form --conceptId 7615 --json /home/nuchanger/Downloads/irc1.json
+//        convert form --conceptId 4498 --json /home/nuchanger/Documents/PSI/form_json/HIVSTF.json
 
         generateMap(path);
-        String sql = "select obs_id from obs where concept_id = ? and voided = false";
+        String sql = "select obs_id from obs where concept_id = ? and voided = false ";
         final List<Map<String, Object>> observations = getJdbcTemplate().queryForList(
                 sql, new Object[]{conceptId});
         List<String> obsId = new ArrayList<>();
@@ -140,7 +137,24 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
         }
         updateMembers(obsId, batchSqls);
         updateSql(conceptObsMap, batchSqls);
-        File file = new File("./update.sql");
+        String sep = ",";
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < obsId.size(); i++) {
+
+            sb.append(obsId.get(i));
+
+            // if not the last item
+            if (i != obsId.size() - 1) {
+                sb.append(sep);
+            }
+        }
+        String updateSql = "update obs set obs_group_id = null where obs_group_id in ( " + sb.toString() + " );";
+        System.out.println(updateSql);
+        String deleteSql = "delete from obs where concept_id = " + conceptId + " and voided = false ;";
+        batchSqls.add(updateSql);
+//        batchSqls.add(deleteSql);
+        File file = new File("update.sql");
         try {
             FileUtils.writeLines(file, batchSqls, false);
         } catch (IOException e) {
@@ -165,8 +179,10 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
         }
         String sql = "select obs_id, concept_id, value_group_id, value_coded, value_coded_name_id, value_drug, value_datetime, " +
                 "value_numeric, value_modifier, value_text, value_complex from obs where obs_group_id in (" + sb.toString() + ")";
-        List<Map<String, Object>> members = getJdbcTemplate().queryForList(
-                sql );
+        List<Map<String, Object>> members = new ArrayList<>();
+        if(obsId.size()>0){
+            members = getJdbcTemplate().queryForList(sql );
+        }
         List<String> memberId  = new ArrayList<>();
         for(Map<String, Object> obs : members){
             if(obs.get("value_group_id") == null && obs.get("value_coded") == null && obs.get("value_coded_name_id") == null &&
@@ -174,24 +190,14 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
                     obs.get("value_text") == null && obs.get("value_complex") == null  && obs.get("value_numeric") ==null){
                 memberId.add((obs.get("obs_id").toString()));
             }
-            else{
-                Integer conceptId = (Integer) obs.get("concept_id");
-                Integer obs_id = (Integer) obs.get("obs_id");
+            Integer conceptId = (Integer) obs.get("concept_id");
+            Integer obs_id = (Integer) obs.get("obs_id");
 
-                if(!conceptObsMap.containsKey(conceptId)){
-                    conceptObsMap.put(conceptId, new ArrayList<Integer>());
-                }
-                List<Integer> obsList = conceptObsMap.get(conceptId);
-                obsList.add(obs_id);
-
-                String fnsp = getFormNameSpaceAndPath(conceptId);
-
-                /*if(!StringUtils.isEmpty(fnsp)){
-                    sql = "update obs set form_namespace_and_path = \"" + fnsp + "\" where obs_id = " + (Integer)(obs.get("obs_id")) + ";";
-                    System.out.println(sql + " " + batchSqls.size());
-                    batchSqls.add(sql);
-                }*/
+            if(!conceptObsMap.containsKey(conceptId)){
+                conceptObsMap.put(conceptId, new ArrayList<Integer>());
             }
+            List<Integer> obsList = conceptObsMap.get(conceptId);
+            obsList.add(obs_id);
         }
         if(!CollectionUtils.isEmpty(memberId)){
             updateMembers(memberId, batchSqls);
