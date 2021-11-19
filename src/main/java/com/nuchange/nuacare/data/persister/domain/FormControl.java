@@ -12,6 +12,7 @@ public class FormControl {
     private FormCotrolProperty properties;
     private FormConcept concept;
     List<FormControl> controls;
+    private Boolean addMore;
 
     public Integer getId() {
         return id;
@@ -59,5 +60,13 @@ public class FormControl {
 
     public void setLabel(FormLabel label) {
         this.label = label;
+    }
+
+    public Boolean getAddMore() {
+        return addMore;
+    }
+
+    public void setAddMore(Boolean addMore) {
+        this.addMore = addMore;
     }
 }

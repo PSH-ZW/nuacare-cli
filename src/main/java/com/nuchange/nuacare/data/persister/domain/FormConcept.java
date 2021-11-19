@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public class FormConcept {
     private String name;
     private String uuid;
+    private Boolean addMore;
 
     public String getName() {
         return name;
@@ -21,5 +22,13 @@ public class FormConcept {
 
     public void setUuid(String uuid) {
         this.uuid = uuid;
+    }
+
+    public Boolean getAddMore() {
+        return addMore;
+    }
+
+    public void setAddMore(Boolean addMore) {
+        this.addMore = addMore;
     }
 }
