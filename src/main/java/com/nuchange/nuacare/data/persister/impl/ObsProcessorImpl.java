@@ -80,6 +80,10 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 
     private void parseForm(JsonNode array){
         JsonNode resources = array.get("formJson").get("resources");
+        String version = array.get("formJson").get("version").asText();
+        if(!StringUtils.isEmpty(version)){
+            versionString = "." + version + "/";
+        }
         String value = resources.get(0).get("value").toString();
         ObjectMapper mapper = new ObjectMapper();
         Forms c = null;
@@ -95,7 +99,9 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 
     private void parseObj(FormControl control, String formName) {
         String formNameSpaceAndPath = locationName + formName + versionString +control.getId()+"-0";
-        formIdMap.put(control.getConcept().getUuid(), formNameSpaceAndPath);
+        if(control.getConcept()!=null) {
+            formIdMap.put(control.getConcept().getUuid(), formNameSpaceAndPath);
+        }
         if(!CollectionUtils.isEmpty(control.getControls())){
             for(FormControl innerControl : control.getControls()){
                 if(innerControl.getControls()!=null){
@@ -128,9 +134,10 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
     public void migrateForm(Integer conceptId, String path){
 //        convert form --conceptId 4498 --json /home/nuchanger/Documents/PSI/form_json/HIVSTF.json
 //        convert form --conceptId 6685 --json /home/nuchanger/Downloads/AddMoreForm_3.json
+//        convert form --conceptId 3326 --json "/home/nuchanger/Documents/PSI/form_json_new/Provider HIV test counselling 1_1.json"
 
         generateMap(path);
-        String sql = "select obs_id from obs where concept_id = ? and voided = false and person_id  = 46215;";
+        String sql = "select obs_id from obs where concept_id = ? and voided = false ;";
         final List<Map<String, Object>> observations = getJdbcTemplate().queryForList(
                 sql, new Object[]{conceptId});
         List<String> obsId = new ArrayList<>();
@@ -243,7 +250,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
         if(conceptUuidMap.containsKey(conceptId)) {
 //            String fnsp = formIdMap.get(conceptUuidMap.get(conceptId)).replace("-0","-");
             String fnsp = formIdMap.get(conceptUuidMap.get(conceptId)).replace("-0","-");
-            String sql = "select * from obs where concept_id = " + conceptId + " and voided = false and person_id  = 46215";
+            String sql = "select * from obs where concept_id = " + conceptId + " and voided = false ";
             List<Map<String, Object>> obs = getJdbcTemplate().queryForList(sql, new Object[]{});
             Map<Integer, List<Integer>> encounterObsMap = new HashMap<>();
             for (Map<String, Object> o : obs) {
@@ -270,7 +277,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 
         generateMap(path);
         Map<Integer, List<Integer>> encounterObsMap = new HashMap<>();
-        String sql = "select * from obs where concept_id = ? and voided = false and person_id  = 46215;";
+        String sql = "select * from obs where concept_id = ? and voided = false ;";
         final List<Map<String, Object>> observations = getJdbcTemplate().queryForList(
                 sql, new Object[]{conceptId});
         List<String> obsId = new ArrayList<>();
@@ -313,9 +320,9 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
         String updateSql = "update obs set obs_group_id = null where obs_group_id in ( " + sb.toString() + " );";
         System.out.println(updateSql);
         String deleteSql = "delete from obs where concept_id = " + conceptId + " and voided = false ;";
-//        batchSqls.add(updateSql);
+        batchSqls.add(updateSql);
         updateAddMoreValues();
-//        batchSqls.add(deleteSql);
+        batchSqls.add(deleteSql);
         File file = new File("update.sql");
         try {
             FileUtils.writeLines(file, batchSqls, false);
