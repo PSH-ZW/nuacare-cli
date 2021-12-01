@@ -31,6 +31,8 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
     private String versionString = ".1/";
     List<String> batchSqls = new ArrayList<>();
     Map<Integer, String> obsFnspMap = new HashMap<>();
+    //to remove after check
+    String personId = "177";
 
 
     public TransactionTemplate getTransactionTemplate() {
@@ -133,11 +135,11 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
     @Override
     public void migrateForm(Integer conceptId, String path){
 //        convert form --conceptId 4498 --json /home/nuchanger/Documents/PSI/form_json/HIVSTF.json
-//        convert form --conceptId 6685 --json /home/nuchanger/Downloads/AddMoreForm_3.json
-//        convert form --conceptId 3326 --json "/home/nuchanger/Documents/PSI/form_json_new/Provider HIV test counselling 1_1.json"
+//        convert form --conceptId 6146 --json '/home/nuchanger/Downloads/Enhanced Adherence Counselling Template (9286)_1 (1).json'
+//        convert form --conceptId 6353 --json "/home/nuchanger/Documents/PSI/forms/rony/Art initial Visit compulsory Question 1 of 2 new_3.json"
 
         generateMap(path);
-        String sql = "select obs_id from obs where concept_id = ? and voided = false ;";
+        String sql = "select obs_id from obs where concept_id = ? and voided = false and person_id  = " + personId + ";";
         final List<Map<String, Object>> observations = getJdbcTemplate().queryForList(
                 sql, new Object[]{conceptId});
         List<String> obsId = new ArrayList<>();
@@ -160,17 +162,24 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
         }
         String updateSql = "update obs set obs_group_id = null where obs_group_id in ( " + sb.toString() + " );";
         System.out.println(updateSql);
-        String deleteSql = "delete from obs where concept_id = " + conceptId + " and voided = false ;";
-        batchSqls.add(updateSql);
+        String deleteSql = "delete from obs where concept_id = " + conceptId + " and voided = false and person_id  = "+ personId + ";";
+        if(sb.length()>0) {
+            batchSqls.add(updateSql);
+        }
         updateAddMoreValues();
-//        batchSqls.add(deleteSql);
+        batchSqls.add(deleteSql);
         File file = new File("update.sql");
         try {
             FileUtils.writeLines(file, batchSqls, false);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
+        if(batchSqls.size()>0) {
+            getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
+        }
+        else{
+            System.out.println("No data present to convert !!!");
+        }
         batchSqls.clear();
         conceptUuidMap.clear();
         conceptObsMap.clear();
