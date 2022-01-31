@@ -3,10 +3,7 @@ package com.nuchange.nuacare.data.persister.commands;
 import com.nuchange.nuacare.data.persister.CSVDataPersister;
 import com.nuchange.nuacare.data.persister.LineProcessor;
 import com.nuchange.nuacare.data.persister.ObsProcessor;
-import com.nuchange.nuacare.data.persister.impl.ConditionsProcessor;
-import com.nuchange.nuacare.data.persister.impl.EditPersonAttribute;
-import com.nuchange.nuacare.data.persister.impl.FormsProcessor;
-import com.nuchange.nuacare.data.persister.impl.LabResultsProcessor;
+import com.nuchange.nuacare.data.persister.impl.*;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.shell.core.CommandMarker;
@@ -17,6 +14,7 @@ import org.springframework.shell.core.annotation.CliOption;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.io.IOException;
 
 @Component
 public class UploadCommands implements CommandMarker {
@@ -41,6 +39,9 @@ public class UploadCommands implements CommandMarker {
 
 	@Autowired
 	private ObsProcessor obsProcessor;
+
+	@Autowired
+	AnalyticsService analyticsService;
 
 	@CliAvailabilityIndicator({"upload csv"})
 	public boolean isSimpleAvailable() {
@@ -95,6 +96,28 @@ public class UploadCommands implements CommandMarker {
 	){
 		obsProcessor.migrateProgramForm(conceptId, path);
 		return "Processed file.." + path;
+	}
+
+	@CliCommand(value = "show_conflicts", help = "shows tables which are inconsistent as they have been upgraded")
+	public String formProgramMetaDataHelper() throws Exception {
+		String concatenatedConflicts = analyticsService.displayAllColumnConflicts();
+		return concatenatedConflicts;
+	}
+
+	@CliCommand(value = "upgrade_form_table", help = "upgrade old table which is inconsistent to new version")
+	//example : upgrade_form_table --form_name "AViac Form Template 8681" --new_version 6
+	public String upgradeFormTables(
+			@CliOption(key = {"form_name"}, mandatory = true, help = "name of the json form") String oldTable,
+			@CliOption(key = {"new_version"}, mandatory = false, help = "path of the json form") Integer version
+	) throws Exception {
+		String result = analyticsService.upgradeForm(oldTable, version);
+		return "updated query :" + result;
+	}
+
+	@CliCommand(value = "initialize_form_details", help = "initializes form_meta_data_table for the first time")
+	public String initializeMetaData() throws Exception {
+		analyticsService.initializeFormMetaDataTable();
+		return "initialization completed.";
 	}
 
 	private LineProcessor getProcessorForType(UploadType type) {
