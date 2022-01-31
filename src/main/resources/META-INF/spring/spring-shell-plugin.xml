@@ -10,9 +10,28 @@
 		<property name="username" value="monty" />
 		<property name="password" value="some_pass"/>
 	</bean>
+
+	<bean id="openmrsDatasource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="driverClassName" value="com.mysql.jdbc.Driver" />
+		<property name="url" value="jdbc:mysql://localhost:3306/open_mrs" />
+		<property name="username" value="root" />
+		<property name="password" value="password"/>
+	</bean>
+
+	<bean id="analyticsDataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="driverClassName" value="org.postgresql.Driver" />
+		<property name="url" value="jdbc:postgresql://localhost:5432/analytics" />
+		<property name="username" value="analytics" />
+		<property name="password" value="password"/>
+	</bean>
 	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
 		<property name="dataSource" ref="localdhis2datasource" />
-
+	</bean>
+	<bean id="analyticsManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="analyticsDataSource" />
+	</bean>
+	<bean id="openmrsManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="analyticsDataSource" />
 	</bean>
 	<!-- Instance of transaction template -->
 	<bean id="transactionTemplate" class="org.springframework.transaction.support.TransactionTemplate">
