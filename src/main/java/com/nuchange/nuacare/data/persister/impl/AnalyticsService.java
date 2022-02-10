@@ -186,6 +186,9 @@ public class AnalyticsService {
         if(generateAlterQuery != null) {
             updateTable(generateAlterQuery);
             updateMetaDataTable(formName, newVersion);
+        }else{
+            updateMetaDataTable(formName, newVersion);
+            return "No additional columns were needed and therefore only the version is updated";
         }
         return generateAlterQuery;
     }
