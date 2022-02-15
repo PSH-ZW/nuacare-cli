@@ -14,7 +14,6 @@ import org.springframework.shell.core.annotation.CliOption;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
-import java.io.IOException;
 
 @Component
 public class UploadCommands implements CommandMarker {
@@ -99,26 +98,29 @@ public class UploadCommands implements CommandMarker {
 	}
 
 	@CliCommand(value = "show_conflicts", help = "shows tables which are inconsistent as they have been upgraded")
-	public String formProgramMetaDataHelper() throws Exception {
-		String concatenatedConflicts = analyticsService.displayAllColumnConflicts();
+	public String showConflicts() throws Exception {
+		String concatenatedConflicts = analyticsService.displayAllConflicts();
 		return concatenatedConflicts;
 	}
 
-	@CliCommand(value = "upgrade_form_table", help = "upgrade old table which is inconsistent to new version")
+	@CliCommand(value = "fix_form", help = "upgrade old table which is inconsistent to new version")
 	//example : upgrade_form_table --form_name "AViac Form Template 8681" --new_version 6
 	public String upgradeFormTables(
 			@CliOption(key = {"form_name"}, mandatory = true, help = "name of the json form") String oldTable,
-			@CliOption(key = {"new_version"}, mandatory = false, help = "path of the json form") Integer version
+			@CliOption(key = {"new_version"}, mandatory = true, help = "path of the json form") Integer version,
+			@CliOption(key = {"show_query_only"}, mandatory = false, help = "path of the json form",
+					systemProvided = false) Boolean show_query_only
 	) throws Exception {
-		String result = analyticsService.upgradeForm(oldTable, version);
-		return "updated query :" + result;
+		if(show_query_only == null) show_query_only = false;
+		String result = analyticsService.fixForm(oldTable, version, show_query_only);
+		return result;
 	}
 
-	@CliCommand(value = "initialize_form_details", help = "initializes form_meta_data_table for the first time")
-	public String initializeMetaData() throws Exception {
-		analyticsService.initializeFormMetaDataTable();
-		return "initialization completed.";
-	}
+//	@CliCommand(value = "initialize_form_details", help = "initializes form_meta_data_table for the first time")
+//	public String initializeMetaData() throws Exception {
+//		analyticsService.initializeFormMetaDataTable();
+//		return "initialization completed.";
+//	}
 
 	@CliCommand(value = "convert forms", help = "Convert obs of form to 2.0")
 	public String convertForms(
