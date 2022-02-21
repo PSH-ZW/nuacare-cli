@@ -120,6 +120,15 @@ public class UploadCommands implements CommandMarker {
 		return "initialization completed.";
 	}
 
+	@CliCommand(value = "convert forms", help = "Convert obs of form to 2.0")
+	public String convertForms(
+			@CliOption(key = {"json"}, mandatory = true, help = "Path of the json file containing concept id and form name") String path,
+			@CliOption(key = {"folder"}, mandatory = true, help = "Path of the folder containing forms") String folder
+	){
+		obsProcessor.migrateForms(path, folder);
+		return "Processed forms from.." + path;
+	}
+
 	private LineProcessor getProcessorForType(UploadType type) {
 		switch (type) {
 			case EditPersonAttributes:

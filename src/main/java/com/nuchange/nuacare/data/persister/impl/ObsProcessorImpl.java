@@ -8,6 +8,7 @@ import com.nuchange.psiutil.model.FormConcept;
 import com.nuchange.psiutil.model.FormControl;
 import com.nuchange.psiutil.model.Forms;
 import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcDaoSupport;
 import org.springframework.jdbc.core.support.JdbcDaoSupport;
@@ -24,6 +25,8 @@ import java.util.*;
 @Component
 public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 
+    final static Logger logger = Logger.getLogger(ObsProcessorImpl.class);
+
     private Map<String, String> formIdMap = new HashMap<>();
     private Map<Integer, String> conceptUuidMap = new HashMap<>();
     private Map<Integer, List<Integer>> conceptObsMap = new HashMap<>();
@@ -32,7 +35,6 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
     List<String> batchSqls = new ArrayList<>();
     Map<Integer, String> obsFnspMap = new HashMap<>();
     //to remove after check
-    String personId = "177";
 
 
     public TransactionTemplate getTransactionTemplate() {
@@ -53,6 +55,26 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
         this.setTransactionTemplate(transactionTemplate);
     }
 
+
+    @Override
+    public void migrateForms(String path, String folder) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            logger.info("Starting processing");
+            Map<String, String> map = objectMapper.readValue(new File(path), Map.class);
+            for(String conceptId : map.keySet()){
+                if(conceptId.equals("6475")){
+                    migrateProgramForm(Integer.parseInt(conceptId), folder + map.get(conceptId));
+                }
+                else{
+                    migrateForm(Integer.parseInt(conceptId), folder + map.get(conceptId));
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private String getFormNameSpaceAndPath(Integer conceptId){
         if (conceptId != null) {
             String conceptUuid = conceptUuidMap.get(conceptId);
@@ -69,6 +91,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
     }
 
     public void generateMap(String path){
+        logger.info("Generating map for form " + path);
         JsonNode array = null;
         ObjectMapper objectMapper = new ObjectMapper();
         try {
@@ -116,7 +139,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
                         formNameSpaceAndPath = locationName + formName + versionString +innerControl.getId()+"-0";
                         formIdMap.put(concept.getUuid(), formNameSpaceAndPath);
                         if(concept.getUuid().equals("9d472fc0-ef3b-45b3-a44b-b1d16d60d44f")){
-                            System.out.println("next");
+//                            System.out.println("next");
                         }
                     }
                 }
@@ -139,13 +162,15 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 //        convert form --conceptId 6353 --json "/home/nuchanger/Documents/PSI/forms/rony/Art initial Visit compulsory Question 1 of 2 new_3.json"
 
         generateMap(path);
-        String sql = "select obs_id from obs where concept_id = ? and voided = false and person_id  = " + personId + ";";
+        logger.info("Processing form " + path);
+        String sql = "select obs_id from obs where concept_id = ? and voided = false ;";
         final List<Map<String, Object>> observations = getJdbcTemplate().queryForList(
                 sql, new Object[]{conceptId});
         List<String> obsId = new ArrayList<>();
         for(Map<String, Object> map : observations){
             obsId.add(map.get("obs_id").toString());
         }
+        logger.info("count : " + observations.size());
         updateMembers(obsId);
         updateSql(conceptObsMap, batchSqls);
         String sep = ",";
@@ -161,30 +186,24 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             }
         }
         String updateSql = "update obs set obs_group_id = null where obs_group_id in ( " + sb.toString() + " );";
-        System.out.println(updateSql);
-        String deleteSql = "delete from obs where concept_id = " + conceptId + " and voided = false and person_id  = "+ personId + ";";
+        String deleteSql = "delete from obs where concept_id = " + conceptId + " and voided = false ;";
         if(sb.length()>0) {
             batchSqls.add(updateSql);
         }
         updateAddMoreValues();
         batchSqls.add(deleteSql);
-        File file = new File("update.sql");
-        try {
-            FileUtils.writeLines(file, batchSqls, false);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         if(batchSqls.size()>0) {
+            logger.info("Running update queries for form " + path);
             getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
         }
         else{
-            System.out.println("No data present to convert !!!");
+            logger.info("No data present to convert !!!");
         }
         batchSqls.clear();
         conceptUuidMap.clear();
         conceptObsMap.clear();
         formIdMap.clear();
-
+        logger.info("Completed processing form " + path);
     }
 
     private void updateMembers(List<String> obsId){
@@ -247,8 +266,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             }
 
             if(!StringUtils.isEmpty(fnsp)){
-                String sql = "update obs set form_namespace_and_path = \"" + fnsp + "\" where obs_id in ( " + sb.toString() + ");";
-                System.out.println(sql + " " + batchSqls.size());
+                String sql = "update obs set obs_group_id = null , form_namespace_and_path = \"" + fnsp + "\" where obs_id in ( " + sb.toString() + ");";
                 batchSqls.add(sql);
             }
         }
@@ -270,7 +288,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
                     encounterObsMap.get(encounterId).add(obsId);
                 } else {
                     Integer index = (encounterObsMap.get(encounterId).size());
-                    sql = "update obs set form_namespace_and_path = \"" + fnsp + index + "\" where obs_id = " + obsId ;
+                    sql = "update obs set obs_group_id = null , form_namespace_and_path = \"" + fnsp + index + "\" where obs_id = " + obsId ;
                     batchSqls.add(sql);
                 }
             }
@@ -283,6 +301,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
         //        convert form --conceptId 4498 --json /home/nuchanger/Documents/PSI/form_json/HIVSTF.json
         //        convert form --conceptId 6353 --json /home/nuchanger/Documents/PSI/form_json/Art initial Visit compulsory Question 1 of 2 new_1.json
         //        convert form --conceptId 6353 --json /home/nuchanger/Downloads/AddMoreForm_3.json
+        //        convert forms --json "/tmp/form_migration/forms.json" --folder "/tmp/form_migration/migrate/"
 
         generateMap(path);
         Map<Integer, List<Integer>> encounterObsMap = new HashMap<>();
@@ -308,7 +327,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
                 String val = fnsp + (index-1);
                 obsFnspMap.put(id,val);
             }
-            sql = "update obs set form_namespace_and_path = \"" + obsFnspMap.get(id) + "\" where obs_id = " + id + ";";
+            sql = "update obs set obs_group_id = null , form_namespace_and_path = \"" + obsFnspMap.get(id) + "\" where obs_id = " + id + ";";
             batchSqls.add(sql);
             obsId.add(map.get("obs_id").toString());
         }
@@ -327,18 +346,13 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             }
         }
         String updateSql = "update obs set obs_group_id = null where obs_group_id in ( " + sb.toString() + " );";
-        System.out.println(updateSql);
         String deleteSql = "delete from obs where concept_id = " + conceptId + " and voided = false ;";
-        batchSqls.add(updateSql);
+        if(sb.length()>0) {
+            batchSqls.add(updateSql);
+        }
         updateAddMoreValues();
         batchSqls.add(deleteSql);
-        File file = new File("update.sql");
-        try {
-            FileUtils.writeLines(file, batchSqls, false);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-//        getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
+        getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
         batchSqls.clear();
         conceptUuidMap.clear();
         conceptObsMap.clear();
@@ -397,8 +411,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             for (int i = 0; i < obsGrp.size(); i++) {
                 Integer id = obsGrp.get(i);
                 String pre = obsFnspMap.get(id) + '/' + fnsp.substring(fnsp.lastIndexOf('/')+1);
-                String sql = "update obs set form_namespace_and_path = \"" + pre + "\" where obs_id = " + id + ";";
-                System.out.println(sql + " " + batchSqls.size());
+                String sql = "update obs set obs_group_id = null , form_namespace_and_path = \"" + pre + "\" where obs_id = " + id + ";";
                 batchSqls.add(sql);
             }
         }
