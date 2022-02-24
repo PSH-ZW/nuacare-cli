@@ -57,12 +57,6 @@ public class AnalyticsService {
         return formDetailsHashSet;
     }
 
-//    public List<FormLabel> getAllFormNameAndPath(){
-//        String sql = "select distinct name as type, value_reference as value from form_resource";
-//        return openmrsJDBCTemplate.query(sql, JdbcTemplateMapperFactory.newInstance()
-//                .newRowMapper(FormLabel.class));
-//    }
-
     public FormLabel getFormResourceDetailsForId(Integer formID){
         String sql = "select distinct name as type, value_reference as value from form_resource where form_id = ?";
         List<FormLabel> formDetails = openmrsJDBCTemplate.query(sql, JdbcTemplateMapperFactory.newInstance()
@@ -83,9 +77,18 @@ public class AnalyticsService {
         return null;
     }
 
+    public FormDetails getFormIdForNameAndHighestPublishedVersion(String formName){
+        String query = "select form_id as formId , name as formName, version from form where published = 1 and name = ? order by version desc";
+        List<FormDetails> formDetails = openmrsJDBCTemplate.query(query, JdbcTemplateMapperFactory.newInstance().
+                newRowMapper(FormDetails.class), formName);
+        if(!CollectionUtils.isEmpty(formDetails)){
+            return formDetails.get(0);
+        }
+        return null;
+    }
+
     public FormDetails findFormMetaDataDetailsForName(String formName){
         //TODO: need to check form details format from form table (because form_meta_data currently reads information from form table)
-        /*String formNameAppended = formName.replaceAll(" ", "_");*/
         String sql = "select form_name as formName, version from form_meta_data where form_name  = ?";
         List<FormDetails> formDetails = analyticsJdbcTemplate
                 .query(sql, JdbcTemplateMapperFactory.newInstance().newRowMapper(FormDetails.class), formName);
@@ -101,12 +104,9 @@ public class AnalyticsService {
         String deleteQuery = "delete from form_meta_data";
         analyticsJdbcTemplate.update(deleteQuery);
         String sql = "select distinct name as formName, version from form where published = 1 and version = 1 group by formName";
-//        String sql = "select distinct name as formName, max(version) as version from form where published = 1 group by formName";
         //TODO: should we select only forms with version 1 or highest as for the first time all form versions would be 1
-        //String sql = select distinct name as formName, version from form where published = 1 order by version desc;
         List<FormDetails> formDetails = openmrsJDBCTemplate.query(sql, JdbcTemplateMapperFactory.newInstance().newRowMapper(FormDetails.class));
         if(!CollectionUtils.isEmpty(formDetails)){
-//            HashSet<FormDetails> formDetailsDistinct = new HashSet<>(formDetails);
             String insertSql = "insert into form_meta_data(form_name, version) values(?, ?)";
             for(FormDetails formDetail: formDetails){
                 analyticsJdbcTemplate.update(insertSql, formDetail.getFormName(), formDetail.getVersion());
@@ -173,12 +173,6 @@ public class AnalyticsService {
     public String displayColumnConflicts(String oldFormPath, String newFormPath, Integer highestVersion,
                                          String nameOfTheForm) throws IOException {
         //TODO: need to check correct format before string manipulation and currently both form paths are hardcoded
-//        FormDetails oldFormDetails = findFormMetaDataDetailsForName(newFormName.substring(0,
-//                newFormName.indexOf("_")));
-//        TableInformation oldTableInformation = getFormColumns("forms/" + oldFormDetails.getFormName()+"_" +
-//                oldFormDetails.getVersion().toString() + ".json");
-//        TableInformation oldTableInformation = getFormColumns("forms/AViac_Form_Template_8681_1.json");
-//        TableInformation newTableInformation = getFormColumns("forms/AViac Form Template 8681_2.json");
         TableInformation oldTableInformation = getFormColumns(oldFormPath);
         TableInformation newTableInformation = getFormColumns(newFormPath);
         HashSet<String> oldFormColumns = oldTableInformation.getColumns();
@@ -194,15 +188,16 @@ public class AnalyticsService {
     }
 
     private String commandString(String nameOfTheForm, Integer highestVersion) {
-        return "|command :fix_form --form_name \""+nameOfTheForm+"\" --new_version "+ highestVersion;
+        return "|command :fix_form --form_name \""+nameOfTheForm+"\" --dry_run false";
     }
 
-    public String fixForm(String formName, Integer newVersion, Boolean showQueryOnly) throws Exception {
-//        if(isNoColumnsToAdd) updateMetaDataTable(formName, newVersion);
+    public String fixForm(String formName, Boolean showQueryOnly) throws Exception {
         FormDetails currentMetaDataDetail = findFormMetaDataDetailsForName(formName);
         if(currentMetaDataDetail != null) {
             Integer oldFormId = getFormIdForNameAndVersion(currentMetaDataDetail.getFormName(), currentMetaDataDetail.getVersion());
-            Integer newFormId = getFormIdForNameAndVersion(formName, newVersion);
+//            Integer newFormId = getFormIdForNameAndVersion(formName, newVersion);
+            FormDetails newFormDetail = getFormIdForNameAndHighestPublishedVersion(formName);
+            Integer newFormId = newFormDetail.getFormId();
             if (oldFormId == null || newFormId == null) throw new Exception("could not upgrade form");
             TableInformation oldTableInformation = getFormColumns(getFormResourceDetailsForId(oldFormId).getValue());
             TableInformation newTableInformation = getFormColumns(getFormResourceDetailsForId(newFormId).getValue());
@@ -219,9 +214,9 @@ public class AnalyticsService {
             if(!showQueryOnly) {
                 if (generateAlterQuery != null) {
                     executeQuery(generateAlterQuery);
-                    updateMetaDataTable(formName, newVersion);
+                    updateMetaDataTable(formName, newFormDetail.getVersion());
                 } else {
-                    updateMetaDataTable(formName, newVersion);
+                    updateMetaDataTable(formName, newFormDetail.getVersion());
                     return "form name : "+ formName +"| No additional columns were needed and therefore only the version is updated";
                 }
             }
@@ -229,7 +224,7 @@ public class AnalyticsService {
                     " needed, " +
                     "Rerun without show_query_only flag for changes to be applied";
         }else{
-            return createTableForForm(formName, newVersion, showQueryOnly);
+            return createTableForForm(formName, showQueryOnly);
         }
     }
 
@@ -246,7 +241,6 @@ public class AnalyticsService {
     }
 
     public TableInformation getFormColumns(String formName) throws IOException {
-        System.out.println(formName);
         TableInformation tableInformation = new TableInformation();
         HashSet<String> columns = new HashSet<>();
         ObjectMapper mapper = new ObjectMapper();
@@ -266,13 +260,15 @@ public class AnalyticsService {
         return tableInformation;
     }
 
-    private String createTableForForm(String formName, Integer highestVersion, boolean showQueryOnly) throws IOException {
-        Integer formId = getFormIdForNameAndVersion(formName, highestVersion);
+    private String createTableForForm(String formName, boolean showQueryOnly) throws IOException {
+//        Integer formId = getFormIdForNameAndVersion(formName, highestVersion);
+        FormDetails newFormDetail = getFormIdForNameAndHighestPublishedVersion(formName);
+        Integer formId = newFormDetail.getFormId();
         String formPath = getFormResourceDetailsForId(formId).getValue();
         String createQuery = AnalyticsUtil.generateCreateTableForForm(formPath);
         if(!showQueryOnly){
             executeQuery(createQuery);
-            insertIntoMetaDataTable(formName, highestVersion);
+            insertIntoMetaDataTable(formName, newFormDetail.getVersion());
             return "|table created for form : " + formName + "|query :"+ createQuery;
         }
         return "form name :" + formName + " query: " + createQuery +

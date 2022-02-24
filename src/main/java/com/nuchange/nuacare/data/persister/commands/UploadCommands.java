@@ -104,15 +104,16 @@ public class UploadCommands implements CommandMarker {
 	}
 
 	@CliCommand(value = "fix_form", help = "upgrade old table which is inconsistent to new version")
-	//example : upgrade_form_table --form_name "AViac Form Template 8681" --new_version 6
+	//example : upgrade_form_table --form_name "AViac Form Template 8681"
 	public String upgradeFormTables(
 			@CliOption(key = {"form_name"}, mandatory = true, help = "name of the json form") String oldTable,
-			@CliOption(key = {"new_version"}, mandatory = true, help = "path of the json form") Integer version,
-			@CliOption(key = {"show_query_only"}, mandatory = false, help = "path of the json form",
-					systemProvided = false) Boolean show_query_only
+//			@CliOption(key = {"new_version"}, mandatory = true, help = "path of the json form") Integer version,
+//			@CliOption(key = {"show_query_only"}, mandatory = false, help = "path of the json form", systemProvided = false) Boolean show_query_only
+			@CliOption(key = {"dry_run"}, mandatory = false, help = "dry_run if true indicates a trial and the query " +
+					"shown will not be executed and if false the query would be executed", systemProvided = false) Boolean show_query_only
 	) throws Exception {
-		if(show_query_only == null) show_query_only = false;
-		String result = analyticsService.fixForm(oldTable, version, show_query_only);
+		if(show_query_only == null) show_query_only = true;
+		String result = analyticsService.fixForm(oldTable, show_query_only);
 		return result;
 	}
 
