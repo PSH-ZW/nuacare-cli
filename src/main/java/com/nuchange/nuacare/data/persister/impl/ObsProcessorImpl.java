@@ -266,7 +266,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             }
 
             if(!StringUtils.isEmpty(fnsp)){
-                String sql = "update obs set obs_group_id = null , form_namespace_and_path = \"" + fnsp + "\" where obs_id in ( " + sb.toString() + ");";
+                String sql = "update obs set form_namespace_and_path = \"" + fnsp + "\" where obs_id in ( " + sb.toString() + ");";
                 batchSqls.add(sql);
             }
         }
@@ -288,7 +288,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
                     encounterObsMap.get(encounterId).add(obsId);
                 } else {
                     Integer index = (encounterObsMap.get(encounterId).size());
-                    sql = "update obs set obs_group_id = null , form_namespace_and_path = \"" + fnsp + index + "\" where obs_id = " + obsId ;
+                    sql = "update obs set form_namespace_and_path = \"" + fnsp + index + "\" where obs_id = " + obsId ;
                     batchSqls.add(sql);
                 }
             }
@@ -327,7 +327,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
                 String val = fnsp + (index-1);
                 obsFnspMap.put(id,val);
             }
-            sql = "update obs set obs_group_id = null , form_namespace_and_path = \"" + obsFnspMap.get(id) + "\" where obs_id = " + id + ";";
+            sql = "update obs set form_namespace_and_path = \"" + obsFnspMap.get(id) + "\" where obs_id = " + id + ";";
             batchSqls.add(sql);
             obsId.add(map.get("obs_id").toString());
         }
@@ -411,7 +411,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             for (int i = 0; i < obsGrp.size(); i++) {
                 Integer id = obsGrp.get(i);
                 String pre = obsFnspMap.get(id) + '/' + fnsp.substring(fnsp.lastIndexOf('/')+1);
-                String sql = "update obs set obs_group_id = null , form_namespace_and_path = \"" + pre + "\" where obs_id = " + id + ";";
+                String sql = "update obs set form_namespace_and_path = \"" + pre + "\" where obs_id = " + id + ";";
                 batchSqls.add(sql);
             }
         }
