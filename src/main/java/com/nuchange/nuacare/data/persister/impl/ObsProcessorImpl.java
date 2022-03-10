@@ -2,15 +2,12 @@ package com.nuchange.nuacare.data.persister.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nuchange.nuacare.data.persister.LineProcessor;
 import com.nuchange.nuacare.data.persister.ObsProcessor;
 import com.nuchange.psiutil.model.FormConcept;
 import com.nuchange.psiutil.model.FormControl;
 import com.nuchange.psiutil.model.Forms;
-import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcDaoSupport;
 import org.springframework.jdbc.core.support.JdbcDaoSupport;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Component;
@@ -36,55 +33,78 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
     Map<Integer, String> obsFnspMap = new HashMap<>();
     //to remove after check
 
-    List<String> addMore = Arrays.asList(
-            "4ace859e-8796-401d-862d-00128d4ab56a"
-            ,"7455945d-dee5-486a-be35-460a1a27d4f6"//art1of2
-            ,"5391d829-019e-4997-83b6-5a1d274f9a59"//art1of2
-            ,"49382c2c-62f5-4836-ae4b-2f861c1a6ec6"//BJE
-            ,"0c943c82-748b-4259-ab39-a4c406dc8db3"//ProHIVTestCounselling
-            ,"c2629027-05a9-4da2-af41-485fa4ea1d14"//skin
-            ,"7c234036-6e09-49e3-8009-33535f26cb9c"//skin
-            ,"e58608f3-a90e-11e9-b7ed-6c2b59806788"//viac1
-            ,"e58616df-a90e-11e9-b7ed-6c2b59806788"//viac2
-            ,"e5862472-a90e-11e9-b7ed-6c2b59806788"//viac3
-            ,"e58aeec5-a90e-11e9-b7ed-6c2b59806788"//viac4
-            ,"e58afdc0-a90e-11e9-b7ed-6c2b59806788"//viac5
-            );
+    List<String> addMoreFields = new ArrayList<>();
+    Map<String,String> sectionFields = new HashMap<>();
+//    List<String> addMoreFields = Arrays.asList(
+//            "4ace859e-8796-401d-862d-00128d4ab56a"//AIVCdateOfPrevEpisode
+//            ,"7455945d-dee5-486a-be35-460a1a27d4f6"//art1of2
+//            ,"5391d829-019e-4997-83b6-5a1d274f9a59"//art1of2
+//            ,"49382c2c-62f5-4836-ae4b-2f861c1a6ec6"//BJE
+//            ,"0c943c82-748b-4259-ab39-a4c406dc8db3"//ProHIVTestCounselling
+//            ,"c2629027-05a9-4da2-af41-485fa4ea1d14"//skin
+//            ,"7c234036-6e09-49e3-8009-33535f26cb9c"//skin
+//            ,"e58608f3-a90e-11e9-b7ed-6c2b59806788"//viac1
+//            ,"e58616df-a90e-11e9-b7ed-6c2b59806788"//viac2
+//            ,"e5862472-a90e-11e9-b7ed-6c2b59806788"//viac3
+//            ,"e58aeec5-a90e-11e9-b7ed-6c2b59806788"//viac4
+//            ,"e58afdc0-a90e-11e9-b7ed-6c2b59806788"//viac5
+//
+//            ,"9b8aaa8a-3ce2-11ea-befb-6c2b59806788"//adherenceCounsellingDetails
+//            ,"9b8ab82a-3ce2-11ea-befb-6c2b59806788"//adherenceCounsellingDrugs
+//            ,"9b8cf69e-3ce2-11ea-befb-6c2b59806788"//adherenceCounsellingPercent
+//            ,"9b8ce91d-3ce2-11ea-befb-6c2b59806788"//adherenceCounsellingDays
+//            ,"9b8cdbd8-3ce2-11ea-befb-6c2b59806788"//adherenceCounsellingTabletsSuppliedVisit
+//            ,"9b8cceb0-3ce2-11ea-befb-6c2b59806788"//remainingTablets
+//            );
+//
+//    List<String> sectionFields = Arrays.asList(
+//            //ART obs
+//            "c37bd733-3f10-11e4-adec-0800271c1b75" //Temp
+//            ,"c36e9c8b-3f10-11e4-adec-0800271c1b75" //Systolic
+//            ,"c378f635-3f10-11e4-adec-0800271c1b75" //Diastolic
+//            ,"c36af094-3f10-11e4-adec-0800271c1b75" //Pulse
+//            ,"c3838414-3f10-11e4-adec-0800271c1b75" //SPO2
+//            ,"c37d3f27-3f10-11e4-adec-0800271c1b75" //RR
+//            ,"c367d9ee-3f10-11e4-adec-0800271c1b75"//BMI
+//            //FPS Counselling
+//            ,"20e7b885-8ab9-42dd-90ee-73b9acca00d1"//Systolic
+//            ,"0a7aaf78-b479-40cb-8ba6-644d54ea1ba1"//Diastolic
+//            //FP Continuation
+//            ,"4a9ff8b4-4bdd-4088-a98b-0d03b770c95f"//Systolic
+//            ,"fef350ce-d753-4696-925d-7c1859bf866a"//Diastolic
+//            //FP Initial
+//            ,"bb885092-2b66-436d-a633-5f216d033985"//Abnormality
+//            ,"16f1edf2-328f-4457-a3d3-780baaedecb6"//Physical spec
+//            ,"995498e9-da55-448e-a2cb-0a41002147f3"//Weight
+//            ,"581a3cd1-5656-4125-883c-a8a98994de84"//Systolic
+//            ,"902fda49-62a0-418b-ae27-de931d856ded"//Diastolic
+//            ,"2f3c5cb7-08bb-4f32-af23-51a50bb12727"//Temp
+//            ,"0da40b30-7e3a-4815-93d7-f1bdaa36006e"//P
+//            ,"e7ba670e-a4bb-402c-b2f3-6d2652d6a544"//R
+//            ,"05e2b7cc-2c46-4911-9d42-391aa82dc17d"//Conditions
+//            ,"1c4e12d5-494d-4a9e-9a72-b0b730a9ded9"//Other
+//            ,"cd7a66f0-5942-4f77-8bc5-78920a0fc5dd"//Size
+//            ,"b5ebb210-98d1-426d-a9ec-da4cfe97e6b1"//Position
+//            ,"5b635273-c63f-45fd-92a2-eb9294d3ff82"//Comment
+//            //COSD
+//            ,"f8a11c97-4fef-426b-bea1-1db843a3d631"//Temperature
+//            ,"d7080f6b-365d-44a7-80e1-927adc95a466"//Systolic
+//            ,"c71f5263-669b-474a-be6b-c6cc0af72df0"//Diastolic
+//            ,"1c013217-5256-4278-a4f6-5f49b45cc158"//Blood Sugar
+//            ,"d67aa88a-1e11-4e62-a803-4991d1fdb5df"//BMI
+//            //VIAC
+//            ,"e57f3426-a90e-11e9-b7ed-6c2b59806788"//Systolic
+//            ,"e57f5dee-a90e-11e9-b7ed-6c2b59806788"//Diastolic
+//            ,"e57efdc6-a90e-11e9-b7ed-6c2b59806788" //wgt
+//            ,"e57f0af9-a90e-11e9-b7ed-6c2b59806788"//T
+//            ,"e57f788a-a90e-11e9-b7ed-6c2b59806788"//P
+//            ,"e58608f3-a90e-11e9-b7ed-6c2b59806788"//viac1
+//            ,"e58616df-a90e-11e9-b7ed-6c2b59806788"//viac2
+//            ,"e5862472-a90e-11e9-b7ed-6c2b59806788"//viac3
+//            ,"e58aeec5-a90e-11e9-b7ed-6c2b59806788"//viac4
+//            ,"e58afdc0-a90e-11e9-b7ed-6c2b59806788"//viac5
+//    );
 
-    List<String> abnormal = Arrays.asList(
-            //ART obs
-            "c37bd733-3f10-11e4-adec-0800271c1b75" //Temp
-            ,"c36e9c8b-3f10-11e4-adec-0800271c1b75" //Systolic
-            ,"c378f635-3f10-11e4-adec-0800271c1b75" //Diastolic
-            ,"c36af094-3f10-11e4-adec-0800271c1b75" //Pulse
-            ,"c3838414-3f10-11e4-adec-0800271c1b75" //SPO2
-            ,"c37d3f27-3f10-11e4-adec-0800271c1b75" //RR
-            //FPS Counselling
-            ,"20e7b885-8ab9-42dd-90ee-73b9acca00d1"//Systolic
-            ,"0a7aaf78-b479-40cb-8ba6-644d54ea1ba1"//Diastolic
-            //FP Continuation
-            ,"4a9ff8b4-4bdd-4088-a98b-0d03b770c95f"//Systolic
-            ,"fef350ce-d753-4696-925d-7c1859bf866a"//Diastolic
-            //FP Initial
-            ,"bb885092-2b66-436d-a633-5f216d033985"//Abnormality
-            ,"16f1edf2-328f-4457-a3d3-780baaedecb6"//Physical spec
-            ,"995498e9-da55-448e-a2cb-0a41002147f3"//Weight
-            ,"581a3cd1-5656-4125-883c-a8a98994de84"//Systolic
-            ,"902fda49-62a0-418b-ae27-de931d856ded"//Diastolic
-            ,"2f3c5cb7-08bb-4f32-af23-51a50bb12727"//Temp
-            ,"0da40b30-7e3a-4815-93d7-f1bdaa36006e"//P
-            ,"e7ba670e-a4bb-402c-b2f3-6d2652d6a544"//R
-            ,"05e2b7cc-2c46-4911-9d42-391aa82dc17d"//Conditions
-            ,"1c4e12d5-494d-4a9e-9a72-b0b730a9ded9"//Other
-            ,"cd7a66f0-5942-4f77-8bc5-78920a0fc5dd"//Size
-            ,"b5ebb210-98d1-426d-a9ec-da4cfe97e6b1"//Position
-            ,"5b635273-c63f-45fd-92a2-eb9294d3ff82"//Comment
-            //COSD
-            ,"f8a11c97-4fef-426b-bea1-1db843a3d631"//Temperature
-            ,"d7080f6b-365d-44a7-80e1-927adc95a466"//Systolic
-            ,"c71f5263-669b-474a-be6b-c6cc0af72df0"//Diastolic
-            ,"1c013217-5256-4278-a4f6-5f49b45cc158"//Blood Sugar
-    );
     public TransactionTemplate getTransactionTemplate() {
         return transactionTemplate;
     }
@@ -106,6 +126,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 
     @Override
     public void migrateForms(String path, String folder) {
+        // TODO: 10/03/22 use concept uuid instead of id , remove concept from all observation after processing
         ObjectMapper objectMapper = new ObjectMapper();
         try {
             logger.info("Starting processing");
@@ -148,6 +169,19 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             e.printStackTrace();
         }
         parseForm(array);
+
+        //sectionFields
+        //Fields created with in section (instead of obs group) should not obs_group_id.
+        //We also store map of concepts that can have abnormal value ( BP - Abnormal )
+        //addMoreFields
+        //Fields having add more option will require extra processing to generate form name space and path.
+        try {
+            JsonNode concepts = objectMapper.readValue(this.getClass().getClassLoader().getResource("concepts.json"), JsonNode.class);
+            sectionFields = objectMapper.readValue(concepts.get("sectionFields").toString(),Map.class);
+            addMoreFields = objectMapper.readValue(concepts.get("addMoreFields").toString(), List.class);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 
@@ -205,7 +239,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 
     @Override
     public void migrateForm(Integer conceptId, String path){
-//        convert form --conceptId 7967 --json "/home/nuchanger/Documents/PSI/formdata/latest/FP Counselling Only 3_1.json"
+//        convert form --conceptId 8681 --json "/home/nuchanger/Documents/PSI/formdata/latest/Viac Form Template 8681_1.json"
 //        convert form --conceptId 8681 --json '/home/nuchanger/Downloads/uuu_1.json'
 //        convert form --conceptId 6353 --json "/home/nuchanger/Documents/PSI/forms/rony/Art initial Visit compulsory Question 1 of 2 new_3.json"
 
@@ -322,7 +356,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
     }
 
     private void updateAddMoreValues(){
-        for(String uuid : addMore) {
+        for(String uuid : addMoreFields) {
             if (conceptUuidMap.containsValue(uuid)) {
                 Integer conceptId = getKey(conceptUuidMap, uuid);
 //            String fnsp = formIdMap.get(conceptUuidMap.get(conceptId)).replace("-0","-");
@@ -335,12 +369,12 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
                     Integer encounterId = Integer.parseInt(o.get("encounter_id").toString());
                     if (!encounterObsMap.containsKey(encounterId)) {
                         encounterObsMap.put(encounterId, new ArrayList<Integer>());
-                        encounterObsMap.get(encounterId).add(obsId);
                     } else {
                         Integer index = (encounterObsMap.get(encounterId).size());
                         sql = "update obs set form_namespace_and_path = \"" + fnsp + index + "\" where obs_id = " + obsId;
                         batchSqls.add(sql);
                     }
+                    encounterObsMap.get(encounterId).add(obsId);
                 }
             }
         }
@@ -353,6 +387,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
         //        convert form --conceptId 6353 --json /home/nuchanger/Documents/PSI/form_json/Art initial Visit compulsory Question 1 of 2 new_1.json
         //        convert form --conceptId 6353 --json /home/nuchanger/Downloads/AddMoreForm_3.json
         //        convert forms --json "/tmp/form_migration/forms.json" --folder "/tmp/form_migration/migrate/"
+        //convert programs form --conceptId 6475 --json "/home/nuchanger/Documents/PSI/formdata/latest/Programs 6475_1.json"
 
         generateMap(path);
         Map<Integer, List<Integer>> encounterObsMap = new HashMap<>();
@@ -396,14 +431,14 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
                 sb.append(sep);
             }
         }
-        String updateSql = "update obs set obs_group_id = null where obs_group_id in ( " + sb.toString() + " );";
+//        String updateSql = "update obs set obs_group_id = null where obs_group_id in ( " + sb.toString() + " );";
 //        String deleteSql = "delete from obs where concept_id = " + conceptId + " and voided = false ;";
-        if(sb.length()>0) {
-            batchSqls.add(updateSql);
-        }
+//        if(sb.length()>0) {
+//            batchSqls.add(updateSql);
+//        }
         updateAddMoreValues();
 //        batchSqls.add(deleteSql);
-//        getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
+        getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
         batchSqls.clear();
         conceptUuidMap.clear();
         conceptObsMap.clear();
@@ -478,10 +513,31 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
     }
 
     private void removeObsGroupId(){
-        for(String uuid : abnormal){
+        for(String uuid : sectionFields.keySet()){
             if(conceptUuidMap.containsValue(uuid)){
                 String updateSql = "update obs set obs_group_id = null where concept_id = " + getKey(conceptUuidMap, uuid)+";";
                 batchSqls.add(updateSql);
+
+                String abnormalConceptUuid = sectionFields.get(uuid);
+                if(abnormalConceptUuid!=null){
+                    String abnormalObsQuery =  "(select od.obs_id from obs od inner join obs oa on od.obs_group_id = oa.obs_group_id and " +
+                            "od.concept_id = " + getKey(conceptUuidMap, uuid) +
+                            " and oa.concept_id = " + getKey(conceptUuidMap, abnormalConceptUuid) + " where oa.value_coded = 1 and oa.voided = false) " ;
+                    List<String> abnormalObs = getJdbcTemplate().queryForList(abnormalObsQuery, String.class);
+                    if(!CollectionUtils.isEmpty(abnormalObs)){
+                        String sep = ",";
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = 0; i < abnormalObs.size(); i++) {
+                            sb.append(abnormalObs.get(i));
+                            // if not the last item
+                            if (i != abnormalObs.size() - 1) {
+                                sb.append(sep);
+                            }
+                        }
+                        updateSql = "update obs set interpretation = 'ABNORMAL' where obs_id in (" + sb.toString() + " ) ";
+                        batchSqls.add(updateSql);
+                    }
+                }
             }
         }
     }
