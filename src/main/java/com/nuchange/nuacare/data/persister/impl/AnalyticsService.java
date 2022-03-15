@@ -98,23 +98,23 @@ public class AnalyticsService {
         return null;
     }
 
-    public void initializeFormMetaDataTable() throws Exception {
-        //TODO: unique constraint on form name
-        //before adding check whether
-        String deleteQuery = "delete from form_meta_data";
-        analyticsJdbcTemplate.update(deleteQuery);
-        String sql = "select distinct name as formName, version from form where published = 1 and version = 1 group by formName";
-        //TODO: should we select only forms with version 1 or highest as for the first time all form versions would be 1
-        List<FormDetails> formDetails = openmrsJDBCTemplate.query(sql, JdbcTemplateMapperFactory.newInstance().newRowMapper(FormDetails.class));
-        if(!CollectionUtils.isEmpty(formDetails)){
-            String insertSql = "insert into form_meta_data(form_name, version) values(?, ?)";
-            for(FormDetails formDetail: formDetails){
-                analyticsJdbcTemplate.update(insertSql, formDetail.getFormName(), formDetail.getVersion());
-            }
-        }else{
-            throw new Exception("Empty data");
-        }
-    }
+//    public void initializeFormMetaDataTable() throws Exception {
+//        //TODO: unique constraint on form name
+//        //before adding check whether
+//        String deleteQuery = "delete from form_meta_data";
+//        analyticsJdbcTemplate.update(deleteQuery);
+//        String sql = "select distinct name as formName, version from form where published = 1 and version = 1 group by formName";
+//        //TODO: should we select only forms with version 1 or highest as for the first time all form versions would be 1
+//        List<FormDetails> formDetails = openmrsJDBCTemplate.query(sql, JdbcTemplateMapperFactory.newInstance().newRowMapper(FormDetails.class));
+//        if(!CollectionUtils.isEmpty(formDetails)){
+//            String insertSql = "insert into form_meta_data(form_name, version) values(?, ?)";
+//            for(FormDetails formDetail: formDetails){
+//                analyticsJdbcTemplate.update(insertSql, formDetail.getFormName(), formDetail.getVersion());
+//            }
+//        }else{
+//            throw new Exception("Empty data");
+//        }
+//    }
 
     private void insertIntoMetaDataTable(String formName, Integer version) {
         String insertSql = "insert into form_meta_data(form_name, version) values(?, ?)";
