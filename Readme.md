@@ -18,7 +18,7 @@ dependent project
        (if table needs to be created) b. will diplay : "form name " <nameOfTheForm> "| command :" <actual command>
        (This needs to be executed below.)
 
-2. In continuation from point 2 to resolve the conflicts below command needs to be entered with result available from point 2
+2. In continuation from point 1 to resolve the conflicts below command needs to be entered with result available from point 2
    look for (command :fix_form --form_name "AViac Form Template 8681")
     1. command (example) : fix_form --form_name "AViac Form Template 8681"
        (here form name is directly taken from point 2 result needs to be given within "" ,
@@ -46,3 +46,17 @@ manipulation is being done to reduce this length therefore it is suggested to no
 unique (Especially for multiselect as this has a higher probability for conflict).
 1a. Currently, an exception is thrown from backend when such an issue is encountered with necessary details using which 
 after necessary steps are taken to make specified form concept unique the necessary CLI could be rerun.
+
+   
+#Creating a table 
+1. The cmd to create a table appears when cmd :show_conflicts is run by first checking the form_meta_data table which 
+contains the details of current form table and respective version.
+2. When there is no entry for the form in form_meta_data it would indicate that a table does not exist, and it would 
+need to be created. 
+3. The table name is fetched from the form where some string manipulation is done to standardize the table name.
+4. The respective table columns which are of two types for fields/concepts/question for single and multiselect
+    1. Single valued: Due to space constraint and non-uniformity eg: spaces, similar string manipulation as done for 
+    table name is followed and additional meaningful characters for unique column name.The value stored under the column
+    is the answer to the concept
+    2. Multivalued: Same as Single valued except in addition the multiselect values are added to the form table as columns 
+    as the value being stored under respective column is a boolean field.
