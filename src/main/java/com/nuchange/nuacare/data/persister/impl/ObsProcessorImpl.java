@@ -273,6 +273,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             batchSqls.add(updateSql);
         }
         updateAddMoreValues();
+        removeConceptFromTemplateSet(conceptId);
         removeObsGroupId();
         batchSqls.add(deleteSql);
         if(batchSqls.size()>0) {
@@ -438,6 +439,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 //        }
         updateAddMoreValues();
 //        batchSqls.add(deleteSql);
+        removeConceptFromTemplateSet(conceptId);
         getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
         batchSqls.clear();
         conceptUuidMap.clear();
@@ -539,6 +541,17 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
                     }
                 }
             }
+        }
+    }
+
+    private void removeConceptFromTemplateSet(Integer conceptId){
+        String query = "select count(*) from concept_set where concept_id  = ? and concept_set = (select c.concept_id from concept c " +
+                "inner join concept_name cn on cn.concept_id  = c.concept_id where cn.name = 'All Observation templates' and cn.locale = 'en' and locale_preferred = true);";
+        Integer count = getJdbcTemplate().queryForObject(
+                query, new Object[] { conceptId }, Integer.class);
+        if(count!=0){
+            batchSqls.add("delete from concept_set where concept_id = " + conceptId + " and concept_set = (select c.concept_id from concept c " +
+                    "inner join concept_name cn on cn.concept_id  = c.concept_id where cn.name = 'All Observation templates' and cn.locale = 'en' and locale_preferred = true);");
         }
     }
 
