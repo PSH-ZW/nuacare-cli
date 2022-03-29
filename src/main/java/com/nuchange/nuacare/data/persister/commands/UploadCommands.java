@@ -81,19 +81,19 @@ public class UploadCommands implements CommandMarker {
 
 	@CliCommand(value = "convert form", help = "Convert form to 2.0")
 	public String convert(
-			@CliOption(key = {"conceptId"}, mandatory = false, help = "Concept id of the form") final Integer conceptId,
+			@CliOption(key = {"conceptUuid"}, mandatory = false, help = "Concept id of the form") final String conceptUuid,
 			@CliOption(key = {"json"}, mandatory = false, help = "Path of the json form") String path
 	){
-		obsProcessor.migrateForm(conceptId, path);
+		obsProcessor.migrateForm(conceptUuid, path);
 		return "Processed file.." + path;
 	}
 
 	@CliCommand(value = "convert programs form", help = "Convert programs form to 2.0")
 	public String convertAddMoreForm(
-			@CliOption(key = {"conceptId"}, mandatory = false, help = "Concept id of the form") final Integer conceptId,
+			@CliOption(key = {"conceptUuid"}, mandatory = false, help = "Concept id of the form") final String conceptUuid,
 			@CliOption(key = {"json"}, mandatory = false, help = "Path of the json form") String path
 	){
-		obsProcessor.migrateProgramForm(conceptId, path);
+		obsProcessor.migrateProgramForm(conceptUuid, path);
 		return "Processed file.." + path;
 	}
 
@@ -125,7 +125,7 @@ public class UploadCommands implements CommandMarker {
 
 	@CliCommand(value = "convert forms", help = "Convert obs of form to 2.0")
 	public String convertForms(
-			@CliOption(key = {"json"}, mandatory = true, help = "Path of the json file containing concept id and form name") String path,
+			@CliOption(key = {"json"}, mandatory = true, help = "Path of the json file containing concept uuid and form name") String path,
 			@CliOption(key = {"folder"}, mandatory = true, help = "Path of the folder containing forms") String folder
 	){
 		obsProcessor.migrateForms(path, folder);

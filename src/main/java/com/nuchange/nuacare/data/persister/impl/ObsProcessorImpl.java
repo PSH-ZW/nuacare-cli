@@ -123,20 +123,19 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
         this.setTransactionTemplate(transactionTemplate);
     }
 
-
     @Override
     public void migrateForms(String path, String folder) {
-        // TODO: 10/03/22 use concept uuid instead of id , remove concept from all observation after processing
+        //convert forms --json "/home/nuchanger/Documents/PSI/formdata/uuid.json" --folder "/home/nuchanger/Documents/PSI/formdata/latest/"
         ObjectMapper objectMapper = new ObjectMapper();
         try {
             logger.info("Starting processing");
             Map<String, String> map = objectMapper.readValue(new File(path), Map.class);
-            for(String conceptId : map.keySet()){
-                if(conceptId.equals("6475")){
-                    migrateProgramForm(Integer.parseInt(conceptId), folder + map.get(conceptId));
+            for(String conceptUuid : map.keySet()){
+                if(conceptUuid.equals("7f739a61-3f47-4417-8de7-91b21e24c047")){
+                    migrateProgramForm(conceptUuid, folder + map.get(conceptUuid));
                 }
                 else{
-                    migrateForm(Integer.parseInt(conceptId), folder + map.get(conceptId));
+                    migrateForm(conceptUuid, folder + map.get(conceptUuid));
                 }
             }
         } catch (IOException e) {
@@ -238,11 +237,9 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
     }
 
     @Override
-    public void migrateForm(Integer conceptId, String path){
-//        convert form --conceptId 8681 --json "/home/nuchanger/Documents/PSI/formdata/latest/Viac Form Template 8681_1.json"
-//        convert form --conceptId 8681 --json '/home/nuchanger/Downloads/uuu_1.json'
-//        convert form --conceptId 6353 --json "/home/nuchanger/Documents/PSI/forms/rony/Art initial Visit compulsory Question 1 of 2 new_3.json"
-
+    public void migrateForm(String conceptUuid, String path){
+//        convert form --conceptUuid ef4a6b27-aa15-11e9-8474-6c2b59806858 --json "/home/nuchanger/Documents/PSI/formdata/latest/Viac Form Template 8681_1.json"
+        Integer conceptId = getConceptId(conceptUuid);
         generateMap(path);
         logger.info("Processing form " + path);
         String sql = "select obs_id from obs where concept_id = ? and voided = false ;";
@@ -383,13 +380,9 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 
 
     @Override
-    public void migrateProgramForm(Integer conceptId, String path) {
-        //        convert form --conceptId 4498 --json /home/nuchanger/Documents/PSI/form_json/HIVSTF.json
-        //        convert form --conceptId 6353 --json /home/nuchanger/Documents/PSI/form_json/Art initial Visit compulsory Question 1 of 2 new_1.json
-        //        convert form --conceptId 6353 --json /home/nuchanger/Downloads/AddMoreForm_3.json
-        //        convert forms --json "/tmp/form_migration/forms.json" --folder "/tmp/form_migration/migrate/"
-        //convert programs form --conceptId 6475 --json "/home/nuchanger/Documents/PSI/formdata/latest/Programs 6475_1.json"
-
+    public void migrateProgramForm(String conceptUuid, String path) {
+        //convert programs form --conceptUuid 7f739a61-3f47-4417-8de7-91b21e24c047 --json "/home/nuchanger/Documents/PSI/formdata/latest/Programs 6475_1.json"
+        Integer conceptId = getConceptId(conceptUuid);
         generateMap(path);
         Map<Integer, List<Integer>> encounterObsMap = new HashMap<>();
         String sql = "select * from obs where concept_id = ? and voided = false ;";
@@ -440,7 +433,10 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
         updateAddMoreValues();
 //        batchSqls.add(deleteSql);
         removeConceptFromTemplateSet(conceptId);
-        getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
+        if(batchSqls.size()>0) {
+            logger.info("Running update queries for form " + path);
+            getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
+        }
         batchSqls.clear();
         conceptUuidMap.clear();
         conceptObsMap.clear();
@@ -553,6 +549,19 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             batchSqls.add("delete from concept_set where concept_id = " + conceptId + " and concept_set = (select c.concept_id from concept c " +
                     "inner join concept_name cn on cn.concept_id  = c.concept_id where cn.name = 'All Observation templates' and cn.locale = 'en' and locale_preferred = true);");
         }
+    }
+
+    private Integer getConceptId(String conceptUuid){
+        if(StringUtils.isEmpty(conceptUuid)){
+            throw new RuntimeException("Concept uuid cannot be null");
+        }
+        String query = "select concept_id from concept where uuid  = ? ";
+        Integer conceptId = getJdbcTemplate().queryForObject(
+                query, new Object[] { conceptUuid }, Integer.class);
+        if(conceptId==null){
+            throw new RuntimeException("Concept id not found for uuid " + conceptUuid);
+        }
+        return conceptId;
     }
 
 }
