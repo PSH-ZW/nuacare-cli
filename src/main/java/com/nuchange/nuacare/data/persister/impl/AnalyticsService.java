@@ -151,10 +151,10 @@ public class AnalyticsService {
             return "No Conflicts found";
         }
         if(!CollectionUtils.isEmpty(createTableForForms)){
+            stringBuilder.append("\n");
+            stringBuilder.append("##########Create Table##########");
+            stringBuilder.append("\n");
             for(FormDetails line: createTableForForms) {
-                stringBuilder.append("\n");
-                stringBuilder.append("##########Create Table##########");
-                stringBuilder.append("\n");
                 stringBuilder.append(row);
                 row = "\n";
                 stringBuilder.append("|form name:").append(line.getFormName()).append("|Table does not exist")
@@ -251,7 +251,7 @@ public class AnalyticsService {
         ObjectMapper mapper = new ObjectMapper();
 //        local only
 //        Forms forms = AnalyticsUtil.parseForm(mapper.readTree(AnalyticsService.class.getClassLoader().getResource(formName)));
-        Forms forms = AnalyticsUtil.parseForm(mapper.readTree(new File(formName)));
+        Forms forms = AnalyticsUtil.parseForm(formName);
         Map<String, FormTable> obsWithConcepts = new HashMap<>();
         AnalyticsUtil.handleObsControls(forms.getControls(), obsWithConcepts, forms.getName(), null);
         if (obsWithConcepts.containsKey(forms.getName())) {
