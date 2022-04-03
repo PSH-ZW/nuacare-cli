@@ -194,7 +194,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
         ObjectMapper mapper = new ObjectMapper();
         Forms c = null;
         try {
-            c = mapper.readValue(value.replace("\\", "").replaceAll("^\"|\"$", ""), Forms.class);
+            c = mapper.readValue(value.replace("\\\"","\"").replace("\\\\","\\").replaceAll("^\"|\"$", ""), Forms.class);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -270,7 +270,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             batchSqls.add(updateSql);
         }
         updateAddMoreValues();
-        removeConceptFromTemplateSet(conceptId);
+//        removeConceptFromTemplateSet(conceptId);
         removeObsGroupId();
         batchSqls.add(deleteSql);
         if(batchSqls.size()>0) {
@@ -432,7 +432,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 //        }
         updateAddMoreValues();
 //        batchSqls.add(deleteSql);
-        removeConceptFromTemplateSet(conceptId);
+//        removeConceptFromTemplateSet(conceptId);
         if(batchSqls.size()>0) {
             logger.info("Running update queries for form " + path);
             getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
