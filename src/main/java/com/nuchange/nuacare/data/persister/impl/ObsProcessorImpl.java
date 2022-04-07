@@ -270,7 +270,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
             batchSqls.add(updateSql);
         }
         updateAddMoreValues();
-//        removeConceptFromTemplateSet(conceptId);
+        removeConceptFromTemplateSet(conceptId);
         removeObsGroupId();
         batchSqls.add(deleteSql);
         if(batchSqls.size()>0) {
@@ -348,6 +348,10 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 
             if(!StringUtils.isEmpty(fnsp)){
                 String sql = "update obs set form_namespace_and_path = \"" + fnsp + "\" where obs_id in ( " + sb.toString() + ");";
+                batchSqls.add(sql);
+            }
+            else{
+                String sql = "update obs set voided = true , void_reason = \"migration\" where obs_id in ( " + sb.toString() + ");";
                 batchSqls.add(sql);
             }
         }
@@ -432,7 +436,7 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
 //        }
         updateAddMoreValues();
 //        batchSqls.add(deleteSql);
-//        removeConceptFromTemplateSet(conceptId);
+        removeConceptFromTemplateSet(conceptId);
         if(batchSqls.size()>0) {
             logger.info("Running update queries for form " + path);
             getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
