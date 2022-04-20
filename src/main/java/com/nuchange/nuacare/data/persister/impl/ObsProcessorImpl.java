@@ -273,13 +273,8 @@ public class ObsProcessorImpl extends JdbcDaoSupport implements ObsProcessor {
         removeConceptFromTemplateSet(conceptId);
         removeObsGroupId();
         batchSqls.add(deleteSql);
-        if(batchSqls.size()>0) {
-            logger.info("Running update queries for form " + path);
-            getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[batchSqls.size()]));
-        }
-        else{
-            logger.info("No data present to convert !!!");
-        }
+        logger.info("Running update queries for form " + path);
+        getJdbcTemplate().batchUpdate(batchSqls.toArray(new String[0]));
         batchSqls.clear();
         conceptUuidMap.clear();
         conceptObsMap.clear();

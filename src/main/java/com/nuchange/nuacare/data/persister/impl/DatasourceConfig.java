@@ -13,7 +13,7 @@ import javax.sql.DataSource;
 public class DatasourceConfig {
 
     @Bean(name = "openmrsJdbcTemplate")
-    public JdbcTemplate OpenMrsJdbcTemplate(
+    public JdbcTemplate openMrsJdbcTemplate(
             @Qualifier("openmrsDatasource") DataSource dataSource) {
         return new JdbcTemplate(dataSource);
     }
