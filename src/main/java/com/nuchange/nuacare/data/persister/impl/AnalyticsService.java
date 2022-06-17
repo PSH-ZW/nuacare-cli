@@ -44,7 +44,7 @@ public class AnalyticsService {
     }
 
     public HashSet<FormDetails> getAllFormsWithHighestPublishedVersion(){
-        final String query = "select form_id as formId, name as formName, version from form where published = 1 order by version desc";
+        final String query = "select form_id as formId, name as formName, version from form where published = 1 order by cast(version as signed  INTEGER) desc";
         List<FormDetails> formDetails = openmrsJDBCTemplate.query(query, JdbcTemplateMapperFactory.newInstance()
                 .newRowMapper(FormDetails.class));
         HashSet<FormDetails> formDetailsHashSet= new HashSet<>();
@@ -78,7 +78,7 @@ public class AnalyticsService {
     }
 
     public FormDetails getFormIdForNameAndHighestPublishedVersion(String formName){
-        String query = "select form_id as formId , name as formName, version from form where published = 1 and name = ? order by version desc";
+        String query = "select form_id as formId , name as formName, version from form where published = 1 and name = ? order by cast(version as signed INTEGER) desc";
         List<FormDetails> formDetails = openmrsJDBCTemplate.query(query, JdbcTemplateMapperFactory.newInstance().
                 newRowMapper(FormDetails.class), formName);
         if(!CollectionUtils.isEmpty(formDetails)){
