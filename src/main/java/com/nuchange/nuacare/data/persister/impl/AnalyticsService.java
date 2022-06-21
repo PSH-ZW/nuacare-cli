@@ -21,6 +21,8 @@ import java.util.*;
 @Service
 public class AnalyticsService {
 
+    private static final String FORM_RESOURCE = "org.bahmni.customdatatype.datatype.FileSystemStorageDatatype";
+
     @Autowired
     @Qualifier("openmrsJdbcTemplate")
     private JdbcTemplate openmrsJDBCTemplate;
@@ -58,9 +60,9 @@ public class AnalyticsService {
     }
 
     public FormLabel getFormResourceDetailsForId(Integer formID){
-        String sql = "select distinct name as type, value_reference as value from form_resource where form_id = ?";
+        String sql = "select distinct name as type, value_reference as value from form_resource where form_id = ? and datatype = ?";
         List<FormLabel> formDetails = openmrsJDBCTemplate.query(sql, JdbcTemplateMapperFactory.newInstance()
-                .newRowMapper(FormLabel.class), formID);
+                .newRowMapper(FormLabel.class), formID, FORM_RESOURCE);
         if(!CollectionUtils.isEmpty(formDetails)){
             return formDetails.get(0);
         }
@@ -84,7 +86,7 @@ public class AnalyticsService {
         if(!CollectionUtils.isEmpty(formDetails)){
             return formDetails.get(0);
         }
-        return null;
+        throw new IllegalStateException(String.format("No published versions found for %s!!", formName));
     }
 
     public FormDetails findFormMetaDataDetailsForName(String formName){
